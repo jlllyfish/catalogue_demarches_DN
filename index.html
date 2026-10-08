@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Catalogue DSFR - Widget Grist</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@gouvfr/dsfr@1.13.1/dist/dsfr.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/remixicon@4.2.0/fonts/remixicon.css">
+<script src="https://docs.getgrist.com/grist-plugin-api.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Marianne", arial, sans-serif; background: #fff; color: #161616; }
+
+  .header-band {
+    background: #fff;
+    border-bottom: 1px solid #E5E5E5;
+    padding: 16px 32px;
+  }
+  .header-inner { display: flex; align-items: center; gap: 32px; }
+
+  .header-brand { display: flex; flex-direction: column; align-items: center; gap: 4px; flex-shrink: 0; }
+  .header-brand img { height: 100px; width: auto; }
+  .header-brand span { font-weight: 700; font-size: .75rem; color: #161616; text-align: center; white-space: nowrap; }
+
+  .header-titles { flex: 1; min-width: 0; }
+  .header-titles h1 { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+  .header-titles p { margin: 2px 0 0; color: #3A3A3A; font-size: .9rem; line-height: 1.3; }
+
+  .search-bar { display: flex; gap: 6px; width: 260px; flex-shrink: 0; }
+  .search-bar input {
+    flex: 1; padding: 8px 12px; border: 1px solid #DDD; border-radius: 4px; font-size: .9rem; min-width: 0;
+  }
+  .search-bar button {
+    display: flex; align-items: center; justify-content: center;
+    background: #000091; color: #fff; border: none; border-radius: 4px;
+    width: 40px; flex-shrink: 0; cursor: pointer;
+  }
+  .search-bar button:hover { background: #1212FF; }
+
+  .layout { display: flex; gap: 32px; padding: 24px 32px; align-items: flex-start; }
+  .sidebar {
+    width: 260px; flex-shrink: 0;
+    position: sticky; top: 16px; align-self: flex-start;
+    max-height: calc(100vh - 32px); overflow-y: auto; padding-right: 4px;
+  }
+  .results-count { font-size: 1.5rem; font-weight: 700; margin: 0 0 16px; }
+
+  .filter-group { border-bottom: 1px solid #E5E5E5; }
+  .filter-group summary {
+    cursor: pointer; padding: 12px 0; font-weight: 600; color: #000091;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+  }
+  .filter-group summary::-webkit-details-marker { display: none; }
+  .filter-group summary::after { content: "\ea4e"; font-family: remixicon; font-weight: 400; transition: transform .2s; }
+  .filter-group[open] summary::after { transform: rotate(180deg); }
+  .filter-option { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: .95rem; }
+  .filter-option input { margin: 0; }
+
+  .results-col { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+
+  .active-filters { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 16px; }
+  .active-filters:empty { display: none; }
+
+  .back-to-top {
+    position: fixed; right: 24px; bottom: 24px; z-index: 50;
+    display: none; align-items: center; gap: 6px;
+    background: #fff !important; color: #000091 !important;
+    border: 1px solid #000091; border-radius: 0; padding: 8px 14px;
+    font-family: inherit; font-size: .875rem; font-weight: 500; cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,18,.16) !important;
+  }
+  .back-to-top.visible { display: inline-flex; }
+  .back-to-top:hover, .back-to-top:focus { background: #F5F5FE !important; }
+  .tag-dismiss {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: #000091 !important; color: #fff !important; border: none; border-radius: 999px;
+    padding: 6px 10px 6px 14px; font-size: .8rem; font-family: inherit; cursor: pointer;
+    box-shadow: none !important;
+  }
+  .tag-dismiss:hover, .tag-dismiss:focus { background: #1212FF !important; }
+  .tag-dismiss i { font-size: 15px; }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 20px;
+  }
+
+  .card {
+    border: 1px solid #E5E5E5; padding: 16px; display: flex; flex-direction: column; gap: 8px;
+    transition: background-color .15s;
+  }
+  .card:hover { background-color: #F6F6F6; }
+  .card-tags { display: flex; gap: 6px; flex-wrap: wrap; }
+  .fr-tag { font-size: .68rem; background: #EEE; padding: 2px 10px; }
+  .fr-tag--blue { background: #E3E3FD; color: #000091; }
+  .fr-tag--green { background: #B8FEC9; color: #18753C; }
+  .fr-tag--darkblue { background: #000091; color: #fff; }
+  .card-title { color: #000091 !important; font-weight: 700; font-size: 1.1rem; text-decoration: none !important; cursor: pointer; display: inline-block; border-bottom: 2px solid #000091; padding-bottom: 3px; width: fit-content; box-shadow: none !important; background-image: none !important; }
+  .card-desc { color: #3A3A3A; font-size: .9rem; line-height: 1.4; flex: 1; }
+  .card-meta { display: flex; align-items: center; gap: 6px; font-size: .85rem; color: #3A3A3A; }
+  .card-meta i { color: #000091; }
+
+  .badge { font-size: .75rem; font-weight: 600; padding: 2px 10px; border-radius: 2px; }
+  .badge--success { background: #B8FEC9; color: #18753C; }
+  .badge--error { background: #FFE9E9; color: #CE0500; }
+  .badge--warning { background: #FFECC8; color: #B34000; }
+
+  .card-footer { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+  .card-footer a { color: #000091; font-size: 1.2rem; }
+
+  .empty-state { color: #666; padding: 40px; text-align: center; grid-column: 1 / -1; }
+  .empty-state-img { max-width: 180px; width: 100%; height: auto; margin-bottom: 16px; }
+
+  /* ---------- RESPONSIVE ---------- */
+  @media (max-width: 768px) {
+    .header-band { padding: 16px 20px; }
+    .header-inner { flex-wrap: wrap; gap: 12px; }
+    .header-titles { order: 1; flex-basis: 100%; }
+    .header-titles h1 { font-size: 1.3rem; }
+    .header-titles p { font-size: .85rem; }
+    .header-brand { order: 0; }
+    .search-bar { order: 2; width: 100%; }
+
+    .layout { flex-direction: column; padding: 16px 20px; gap: 20px; }
+    .sidebar { width: 100%; position: static; max-height: none; overflow: visible; padding-right: 0; }
+
+    .cards-grid { grid-template-columns: 1fr; gap: 16px; }
+  }
+
+  @media (max-width: 420px) {
+    .header-titles h1 { font-size: 1.1rem; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header-band">
+  <div class="header-inner">
+    <div class="header-brand">
+      <img src="https://upload.wikimedia.org/wikipedia/commons/3/30/Logo_ministere.png" alt="Logo Ministère">
+      <span>DRAAF-SRFD Occitanie</span>
+    </div>
+    <div class="header-titles">
+      <h1>Catalogue des démarches</h1>
+      <p>Recherchez une demande, un appel à projets...</p>
+    </div>
+    <div class="search-bar">
+      <input id="searchInput" type="text" placeholder="Rechercher">
+      <button id="searchBtn"><i class="ri-search-line"></i></button>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="sidebar">
+    <p class="results-count"><span id="resultsCount">0</span> résultats</p>
+    <div class="active-filters" id="activeFiltersRow"></div>
+    <p style="font-weight:700; margin-bottom:8px;">Affinez votre recherche :</p>
+
+    <details class="filter-group" id="filterTheme">
+      <summary>Thématique</summary>
+      <div class="filter-options"></div>
+    </details>
+
+    <details class="filter-group" id="filterType">
+      <summary>Type de démarche</summary>
+      <div class="filter-options"></div>
+    </details>
+
+    <details class="filter-group" id="filterUnites">
+      <summary>Unité</summary>
+      <div class="filter-options"></div>
+    </details>
+  </aside>
+
+  <div class="results-col">
+    <main class="cards-grid" id="cardsGrid">
+      <div class="empty-state">En attente de connexion à Grist…</div>
+    </main>
+  </div>
+</div>
+
+<button type="button" class="back-to-top" id="backToTop" aria-label="Retour en haut de page">
+  <i class="ri-arrow-up-line"></i> Haut de page
+</button>
+
+<script>
+// ---------- ETAT ----------
+let allRecords = [];   // tous les enregistrements bruts de la table Grist
+let mappedCols = {};   // mapping colonne logique -> nom réel de colonne Grist
+let activeFilters = { Unites: new Set(), Theme: new Set(), Type: new Set() };
+let searchTerm = "";
+let searchDebounce = null;
+
+// ---------- GRIST READY ----------
+grist.ready({
+  columns: [
+    { name: "Titre", title: "Titre" },
+    { name: "Description", title: "Description" },
+    { name: "Type", title: "Type", optional: true },
+    { name: "TypeEtablissement", title: "Type établissement éligible", optional: true },
+    { name: "Perimetre", title: "Périmètre", optional: true },
+    { name: "Statut", title: "Statut", optional: true },
+    { name: "Unites", title: "Unité", optional: true },
+    { name: "Theme", title: "Thematique", optional: true },
+    { name: "DateOuverture", title: "Date ouverture", optional: true },
+    { name: "DateLimite", title: "Date limite", optional: true },
+    { name: "Lien", title: "Lien document", optional: true },
+    { name: "LienDN", title: "Lien DN", optional: true }
+  ],
+  requiredAccess: "read table"
+});
+
+grist.onRecords((records, mappings) => {
+  mappedCols = mappings || {};
+  allRecords = records;
+  buildFilterOptions();
+  render();
+});
+
+// ---------- HELPERS ----------
+function formatDateFR(v) {
+  if (!v && v !== 0) return "";
+  let d;
+  if (v instanceof Date) d = v;
+  else if (typeof v === "number") d = new Date(v * 1000); // timestamp Grist en secondes
+  else if (typeof v === "string") {
+    if (!v.match(/^\d{4}-\d{2}-\d{2}/)) return v; // déjà un format texte libre
+    d = new Date(v);
+  } else return String(v);
+  if (isNaN(d.getTime())) return String(v);
+  return d.toLocaleDateString("fr-FR");
+}
+
+function col(record, logicalName) {
+  const real = mappedCols[logicalName];
+  return real ? record[real] : undefined;
+}
+
+function buildFilterOptions() {
+  buildOneFilter("filterTheme", "Theme", "Theme");
+  buildOneFilter("filterType", "Type", "Type");
+  buildOneFilter("filterUnites", "Unites", "Unites");
+}
+
+function buildOneFilter(containerId, logicalCol, filterKey) {
+  const container = document.querySelector(`#${containerId} .filter-options`);
+  const counts = {};
+  allRecords.forEach(r => {
+    const v = col(r, logicalCol);
+    if (v) counts[v] = (counts[v] || 0) + 1;
+  });
+  container.innerHTML = Object.entries(counts)
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([value, count]) => `
+      <label class="filter-option">
+        <input type="checkbox" data-filter="${filterKey}" value="${value}"
+          ${activeFilters[filterKey].has(value) ? "checked" : ""}>
+        ${value} (${count})
+      </label>
+    `).join("");
+
+  container.querySelectorAll("input[type=checkbox]").forEach(cb => {
+    cb.addEventListener("change", e => {
+      const { filter, checked } = { filter: e.target.dataset.filter, checked: e.target.checked };
+      if (checked) activeFilters[filter].add(e.target.value);
+      else activeFilters[filter].delete(e.target.value);
+      render();
+    });
+  });
+}
+
+const FILTER_LABELS = { Theme: "Thématique", Type: "Type", Unites: "Unité" };
+
+function renderActiveFilters() {
+  const container = document.getElementById("activeFiltersRow");
+  const tags = [];
+  for (const key of ["Theme", "Type", "Unites"]) {
+    activeFilters[key].forEach(value => {
+      tags.push({ key, value });
+    });
+  }
+  if (tags.length === 0) {
+    container.innerHTML = "";
+    return;
+  }
+  container.innerHTML = tags.map(({ key, value }, i) => `
+    <button class="tag-dismiss" type="button" data-key="${key}" data-value="${value.replace(/"/g, "&quot;")}" aria-label="Retirer le filtre ${FILTER_LABELS[key]} : ${value}">
+      ${value}
+      <i class="ri-close-line"></i>
+    </button>
+  `).join("");
+
+  container.querySelectorAll(".tag-dismiss").forEach(btn => {
+    btn.addEventListener("click", () => {
+      const { key, value } = btn.dataset;
+      activeFilters[key].delete(value);
+      buildFilterOptions(); // resynchronise les cases à cocher dans les accordéons
+      render();
+    });
+  });
+}
+
+function matchesFilters(record) {
+  for (const key of ["Theme", "Type", "Unites"]) {
+    if (activeFilters[key].size > 0) {
+      const v = col(record, key);
+      if (!activeFilters[key].has(v)) return false;
+    }
+  }
+  if (searchTerm) {
+    const haystack = [
+      col(record, "Titre"),
+      col(record, "Description"),
+      col(record, "Type"),
+      col(record, "Statut"),
+      col(record, "Theme"),
+      col(record, "Unites")
+    ].filter(Boolean).join(" ").toLowerCase();
+    if (!haystack.includes(searchTerm.toLowerCase())) return false;
+  }
+  return true;
+}
+
+function render() {
+  const grid = document.getElementById("cardsGrid");
+  const filtered = allRecords.filter(matchesFilters);
+  document.getElementById("resultsCount").textContent = filtered.length;
+  renderActiveFilters();
+
+  if (filtered.length === 0) {
+    grid.innerHTML = `<div class="empty-state"><img src="https://i.pinimg.com/236x/cd/ce/c2/cdcec265c7323ec10d0642966f15cd0d.jpg" alt="" class="empty-state-img"><br>Aucun résultat pour cette recherche.</div>`;
+    return;
+  }
+
+  grid.innerHTML = filtered.map(r => {
+    const titre = col(r, "Titre") || "(sans titre)";
+    const desc = col(r, "Description") || "";
+    const type = col(r, "Type") || "";
+    const typeEtab = col(r, "TypeEtablissement") || "";
+    const perimetre = col(r, "Perimetre") || "";
+    const perimetreNorm = perimetre.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const perimetreClass = perimetreNorm.includes("national") ? "fr-tag--darkblue"
+      : perimetreNorm.includes("regional") ? "fr-tag--green"
+      : "";
+    const statut = (col(r, "Statut") || "").toLowerCase();
+    const dateOuverture = formatDateFR(col(r, "DateOuverture"));
+    const dateLimite = formatDateFR(col(r, "DateLimite"));
+    const lien = col(r, "Lien") || "#";
+    const lienDN = col(r, "LienDN") || "";
+
+    const statutNorm = statut.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const badgeClass = statutNorm.includes("ouvert") ? "badge--success"
+      : (statutNorm.includes("ferme") || statutNorm.includes("termin") || statutNorm.includes("clos")) ? "badge--error"
+      : statutNorm.includes("venir") ? "badge--warning"
+      : "";
+    const badgeLabel = col(r, "Statut") || "";
+
+    return `
+      <article class="card">
+        <div class="card-tags">
+          ${type ? `<span class="fr-tag">${type}</span>` : ""}
+          ${typeEtab ? `<span class="fr-tag fr-tag--blue">${typeEtab}</span>` : ""}
+          ${perimetre ? `<span class="fr-tag ${perimetreClass}">${perimetre}</span>` : ""}
+        </div>
+        <a class="card-title" href="${lienDN || lien}" target="_blank" rel="noopener">${titre}</a>
+        <p class="card-desc">${desc}</p>
+        ${badgeLabel ? `<span class="badge ${badgeClass}" style="width:fit-content;">${badgeLabel}</span>` : ""}
+        <div class="card-meta">
+          <i class="ri-calendar-line"></i>
+          <span>${dateOuverture ? "Date d'ouverture : " + dateOuverture : ""}</span>
+        </div>
+        <div class="card-meta">
+          <i class="ri-calendar-line"></i>
+          <span>${dateLimite ? "Date limite : " + dateLimite : "Date limite : Fil de l'eau"}</span>
+        </div>
+        <div class="card-footer">
+          ${lien !== "#" ? `<a href="${lien}" target="_blank" rel="noopener" style="font-size:.8rem;color:#000091;">Document</a>` : "<span></span>"}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  // sync curseur Grist si on clique une card (optionnel, à activer si besoin)
+  grid.querySelectorAll(".card").forEach((cardEl, i) => {
+    cardEl.addEventListener("click", (e) => {
+      if (e.target.tagName === "A") return; // laisser le lien natif faire son travail
+      const record = filtered[i];
+      grist.setCursorPos({ rowId: record.id });
+    });
+  });
+}
+
+// ---------- RECHERCHE (debounce 200ms) ----------
+document.getElementById("searchInput").addEventListener("input", (e) => {
+  clearTimeout(searchDebounce);
+  const value = e.target.value;
+  searchDebounce = setTimeout(() => {
+    searchTerm = value;
+    render();
+  }, 200);
+});
+document.getElementById("searchBtn").addEventListener("click", () => {
+  searchTerm = document.getElementById("searchInput").value;
+  render();
+});
+
+// ---------- HAUT DE PAGE ----------
+(function () {
+  const btn = document.getElementById("backToTop");
+  const toggle = () => btn.classList.toggle("visible", (window.scrollY || document.documentElement.scrollTop) > 300);
+  window.addEventListener("scroll", toggle, { passive: true });
+  btn.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "auto" }));
+  toggle();
+})();
+</script>
+
+</body>
+</html>
